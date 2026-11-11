@@ -1,7 +1,7 @@
 import csv, io
 from fastapi import HTTPException
 from redis import Redis
-from ..config.settings import REDIS_URL
+from ..config.settings import REDIS_URL, JOB_QUEUE_KEY
 from ..models import AnalysisRun, Experiment
 from ..utils.serialize import record
 from .audit_service import log
@@ -16,7 +16,7 @@ def enqueue(db,eid,user):
     if not db.get(Experiment,eid): raise HTTPException(404,"实验不存在")
     row=AnalysisRun(experiment_id=eid,status="queued")
     db.add(row); db.flush(); log(db,user.email,"analysis.enqueue",row.id); db.commit()
-    try: queue.rpush("lift:jobs",row.id)
+    try: queue.rpush(JOB_QUEUE_KEY,row.id)
     except Exception:
         row.status="failed"; row.error="队列不可用，请稍后重新运行"; db.commit(); raise HTTPException(503,row.error)
     return record(row)

@@ -12,7 +12,7 @@ router=APIRouter(tags=["analysis"])
 def index(db:Session=Depends(get_db),user=Depends(current_user)): return list_runs(db)
 @router.get("/runs/{rid}",response_model=RunOutput)
 def show(rid:int,db:Session=Depends(get_db),user=Depends(current_user)): return record(get_run(db,rid))
-@router.post("/experiments/{eid}/runs",status_code=202)
+@router.post("/experiments/{eid}/runs",status_code=202,response_model=RunOutput)
 def execute(eid:int,db:Session=Depends(get_db),user=Depends(roles(Role.ADMIN,Role.ANALYST))): return enqueue(db,eid,user)
 @router.get("/runs/{rid}/export")
 def export(rid:int,db:Session=Depends(get_db),user=Depends(current_user)):

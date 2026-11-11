@@ -84,8 +84,12 @@ frontend/src/{api,stores,types,components,hooks,pages,router,utils,constants}
 | DB_PORT | 17700 | PostgreSQL 宿主映射 |
 | JWT_SECRET | local-demo-lift-lab-change-this-key | 本地演示签名密钥，部署前更换 |
 | SEED_DEMO | true | 后端启动时 seed |
+| LEASE_TIMEOUT_SECONDS | 120 | 任务租约秒数，需长于单次分析最长耗时；超时未续租视为中断 |
+| HEARTBEAT_INTERVAL_SECONDS | 30 | worker 续租心跳间隔 |
+| MAX_ATTEMPTS | 3 | 同一任务最多自动领取次数，超限标记 failed |
+| REAPER_INTERVAL_SECONDS | 5 | 扫描租约过期任务并重新入队的间隔 |
 
-命名卷 `db-data`、`redis-data`、`artifacts`；backend/worker 共享产物卷。worker 使用2秒阻塞轮询并持续写心跳；5个容器均有健康检查。后端等待 db/redis healthy，前端等待 backend healthy。单 worker 运行；进程意外退出时已标为 running 的任务需要人工重新提交，本地演示未提供自动重试。停止并清空本项目数据：
+命名卷 `db-data`、`redis-data`、`artifacts`；backend/worker 共享产物卷。worker 使用阻塞轮询并持续写心跳；5个容器均有健康检查，后端等待 db/redis healthy，前端等待 backend healthy。worker 支持多实例并发与中断恢复：任务领取是数据库条件 UPDATE（`FOR UPDATE SKIP LOCKED`），每条任务同一时刻只有一个 worker 持有租约，心跳线程持续续租；worker 进程意外退出后租约到期，reaper 自动把任务重新入队并由任意 worker 接手，重复投递的队列消息在领取阶段去重，不会重复分析或重复写 `analysis.completed` 留痕；结果文件先写临时文件再 rename，写入失败保持 `running` 并重新入队，接手时复用已落库结果。自动重试默认最多 3 次领取，超限标记 `failed` 并提示人工处理；已完成的分析及其关联决策始终保持原样。停止并清空本项目数据：
 
 ```bash
 docker compose down -v --remove-orphans
@@ -95,7 +99,7 @@ docker compose down -v --remove-orphans
 
 安装 Python 3.11，`pip install -r backend/requirements.txt`；将 `DATABASE_URL` / `REDIS_URL` 指向本机依赖，`cd backend && uvicorn src.main:app --reload`。前端 `cd frontend && npm install && npm run dev`；开发时需为 `/api` 配置反向代理到本地后端。标准启动以 Compose 为准。
 
-测试脚本、截图和真实结果在项目外 `../../test-artifacts/gb-0001/`。日志与 `.env` 不提交。该应用适合本地合成数据研究；不包含真实文件上传、邮件外发、生产级多实例限流或任务恢复。
+测试脚本、截图和真实结果在项目外 `../../test-artifacts/gb-0001/`。日志与 `.env` 不提交。该应用适合本地合成数据研究；不包含真实文件上传、邮件外发或生产级多实例限流，任务恢复机制（租约、心跳、重新入队、幂等完成）见 `backend/src/services/run_recovery.py` 与 `backend/src/worker.py`。
 
 ## License
 

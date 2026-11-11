@@ -12,6 +12,13 @@ from .services.run_service import queue
 @asynccontextmanager
 async def lifespan(app):
     Base.metadata.create_all(engine)
+    from .config.migrations import ensure_run_recovery_schema, recover_orphan_runs
+    ensure_run_recovery_schema()
+    try:
+        recover_orphan_runs()
+    except Exception:
+        # 启动恢复失败不应阻断 API；worker 的租约回收会兜底处理孤儿任务
+        logging.exception("启动任务恢复失败，等待 worker 租约回收")
     if SEED_DEMO:
         try:
             from scripts.seed_demo import seed
