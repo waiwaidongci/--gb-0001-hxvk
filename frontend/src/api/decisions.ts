@@ -1,0 +1,1 @@
+import {request} from './client';import {Decision} from '../types/domain';export const getDecisions=()=>request<Decision[]>('/decisions');export const createDecision=(data:{run_id:number;outcome:string;note:string})=>request<Decision>('/decisions',{method:'POST',body:JSON.stringify(data)});

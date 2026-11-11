@@ -1,0 +1,1 @@
+import {request} from './client';import {Dataset,Observation} from '../types/domain';export const getDatasets=()=>request<Dataset[]>('/datasets');export const getObservations=(id:number)=>request<Observation[]>(`/datasets/${id}/observations`);

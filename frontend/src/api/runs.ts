@@ -1,0 +1,1 @@
+import {request} from './client';import {Run} from '../types/domain';export const getRuns=()=>request<Run[]>('/runs');export const enqueueRun=(id:number)=>request<Run>(`/experiments/${id}/runs`,{method:'POST'});

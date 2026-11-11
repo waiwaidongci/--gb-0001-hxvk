@@ -1,0 +1,1 @@
+import {request} from './client';import {Experiment} from '../types/domain';export const getExperiments=()=>request<Experiment[]>('/experiments');export const createExperiment=(data:Omit<Experiment,'id'|'owner'>)=>request<Experiment>('/experiments',{method:'POST',body:JSON.stringify(data)});
